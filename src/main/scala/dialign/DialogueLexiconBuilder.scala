@@ -45,6 +45,7 @@ import gstlib.GeneralizedSuffixTree
 
 import scala.collection.immutable.SortedSet
 import scala.collection.mutable
+import scala.util.control.Breaks._
 
 /**
   * Dialogue lexicon builder from the transcript of a dyadic dialogue
@@ -90,13 +91,15 @@ object DialogueLexiconBuilder extends LazyLogging {
     * @param turnID2Speaker  a mapping from a utterance ID in the sequence of utterances and the speaker of this utterance
     * @param mode            type of pattern that are extracted
     * @param isValidSequence utterance validator that tells whether an utterance is eligible to the sequence mining task
+    * @param limitedLexicon  a sequence of lexicons to be considered for alignment
     * @return a lexicon of expressions extracted from the dialogue utterances
     */
   def apply(utterances: IndexedSeq[TokenizedUtterance],
             turnID2Speaker: Int => Speaker = getSpeakerDefault,
             speaker2string: Speaker => String = getSpeakerStrReprDefault,
             mode: ExpressionType = INTER_REPETITION_ONLY,
-            isValidSequence: TokenizedUtterance => Boolean = isValidSequenceDefault): DialogueLexicon = {
+            isValidSequence: TokenizedUtterance => Boolean = isValidSequenceDefault,
+            limitedLexicon: Seq[String] = List.empty[String]): DialogueLexicon = {
     // Pre-processing: building the generalized suffix tree
     val gstree = GeneralizedSuffixTree(utterances: _*)
 
@@ -134,40 +137,54 @@ object DialogueLexiconBuilder extends LazyLogging {
           })
           val numberOfSpeaker = positionsBySpeaker.size
 
-
-          mode match {
-            case ALL =>
-              val expr = Expression(subseq)
-              orderedSubsequences += expr
-              expr2positions(expr) = (SortedSet[(Int, Int)]() ++ positions)
-              expr2freq(expr) = freq
-              expr2numSpeaker(expr) = numberOfSpeaker
-
-            case INTER_REPETITION_ONLY =>
-              val hasBeenUsedByTwoSpeaker = (numberOfSpeaker > 1)
-              if (hasBeenUsedByTwoSpeaker) {
-                val expr = Expression(subseq)
-                orderedSubsequences += expr
-                expr2positions(expr) = (SortedSet[(Int, Int)]() ++ positions)
-                expr2freq(expr) = freq
-                expr2numSpeaker(expr) = numberOfSpeaker
-              } else {
-                logger.debug(s"Ignoring pattern ($freq, $subseqStr) because it has only been used by one speaker.")
+          var includeSubseq = false
+          if (!(limitedLexicon.isEmpty)) {
+            breakable {for (l <- limitedLexicon) {
+              if (subseqStr contains l) {
+                includeSubseq = true
+                break
               }
-
-            case OWN_REPETITION_ONLY =>
-              val hasBeenUsedByOneSpeakerOnly = (numberOfSpeaker == 1)
-              if (hasBeenUsedByOneSpeakerOnly) {
-                val expr = Expression(subseq)
-                orderedSubsequences += expr
-                expr2positions(expr) = (SortedSet[(Int, Int)]() ++ positions)
-                expr2freq(expr) = freq
-                expr2numSpeaker(expr) = numberOfSpeaker
-              } else {
-                logger.debug(s"Ignoring pattern ($freq, $subseqStr) because it has only been used by more than one speaker.")
-              }
+            } }
+          } else {
+            includeSubseq = true
           }
 
+          if (!(includeSubseq)) {
+            logger.debug(s"Ignoring pattern ($freq, $subseqStr) because it does not have specified lexicon.")
+          } else {
+            mode match {
+              case ALL =>
+                val expr = Expression(subseq)
+                orderedSubsequences += expr
+                expr2positions(expr) = (SortedSet[(Int, Int)]() ++ positions)
+                expr2freq(expr) = freq
+                expr2numSpeaker(expr) = numberOfSpeaker
+
+              case INTER_REPETITION_ONLY =>
+                val hasBeenUsedByTwoSpeaker = (numberOfSpeaker > 1)
+                if (hasBeenUsedByTwoSpeaker) {
+                  val expr = Expression(subseq)
+                  orderedSubsequences += expr
+                  expr2positions(expr) = (SortedSet[(Int, Int)]() ++ positions)
+                  expr2freq(expr) = freq
+                  expr2numSpeaker(expr) = numberOfSpeaker
+                } else {
+                  logger.debug(s"Ignoring pattern ($freq, $subseqStr) because it has only been used by one speaker.")
+                }
+
+              case OWN_REPETITION_ONLY =>
+                val hasBeenUsedByOneSpeakerOnly = (numberOfSpeaker == 1)
+                if (hasBeenUsedByOneSpeakerOnly) {
+                  val expr = Expression(subseq)
+                  orderedSubsequences += expr
+                  expr2positions(expr) = (SortedSet[(Int, Int)]() ++ positions)
+                  expr2freq(expr) = freq
+                  expr2numSpeaker(expr) = numberOfSpeaker
+                } else {
+                  logger.debug(s"Ignoring pattern ($freq, $subseqStr) because it has only been used by more than one speaker.")
+                }
+            }
+          }
         } else {
           logger.debug(s"Ignoring pattern ($freq, $subseqStr) because it does not contain any word.")
         }
