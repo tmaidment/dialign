@@ -202,8 +202,6 @@ object DialignOfflineApp extends LazyLogging {
               List.empty[String]
             }
 
-          logger.info(s"The lexicons considered here are ${limitedLexicon}")
-
           // Outputing the results
           val OUTPUT_DIR = config.outputDirectory.getAbsolutePath
 

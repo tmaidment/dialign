@@ -52,6 +52,11 @@ sealed abstract class DialogueHistory {
     */
   def history(): IndexedSeq[Utterance]
 
+  /**
+    *
+    * @return the subset of lexicon
+    */
+  def getLimitedLexicon(): Seq[String]
 
   /**
     *
@@ -80,7 +85,8 @@ sealed abstract class DialogueHistory {
 }
 
 object DialogueHistory {
-  def apply(utterances: IndexedSeq[Utterance] = IndexedSeq.empty[Utterance]): DialogueHistory = {
+  def apply(utterances: IndexedSeq[Utterance] = IndexedSeq.empty[Utterance],
+            limitedLexicon: Seq[String] = List.empty[String]): DialogueHistory = {
     // Creation and implemenation of the dialogue history
     val result = new DialogueHistory() {
       protected val utterances = scala.collection.mutable.Buffer[Utterance]()
@@ -90,6 +96,12 @@ object DialogueHistory {
         * @return the dialogue history
         */
       override def history(): IndexedSeq[Utterance] = utterances.toIndexedSeq
+
+      /**
+        *
+        * @return the subset of lexicon
+        */
+      override def getLimitedLexicon(): Seq[String] = limitedLexicon
 
       /**
         * Add an utterance and update dialogue history
@@ -130,7 +142,7 @@ object DialogueHistory {
             yield ((index, locutor2speaker(locutor)))).toMap
 
         // 3- Building the shared expression lexicon
-        val lexicon = DialogueLexiconBuilder(tokenizedUtterances, turn2speaker, speaker2string)
+        val lexicon = DialogueLexiconBuilder(tokenizedUtterances, turn2speaker, speaker2string, limitedLexicon=limitedLexicon)
 
         // 4- Building the self-expression lexicon
         val lastSpeaker = locutor2speaker(lastUtterance.locutor)
@@ -150,7 +162,8 @@ object DialogueHistory {
         val selfRepetitionLexicon = DialogueLexiconBuilder(
           lastSpeakerUtterances,
           turn2speaker, speaker2string,
-          ExpressionType.OWN_REPETITION_ONLY)
+          ExpressionType.OWN_REPETITION_ONLY,
+          limitedLexicon=limitedLexicon)
 
         // 5- Computation of metrics
         val lexiconMetrics = LexiconBasedMeasures(lexicon)

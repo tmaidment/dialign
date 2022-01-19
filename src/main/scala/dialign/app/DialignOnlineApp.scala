@@ -52,6 +52,7 @@ object DialignOnlineApp extends LazyLogging {
 
   case class Config(history: Option[File] = None,
                     output: Option[File] = None,
+                    lexiconFile: File = new File("."),
                     verbose: Boolean = false)
 
   val parser = new scopt.OptionParser[Config]("dialign-online") {
@@ -87,6 +88,10 @@ object DialignOnlineApp extends LazyLogging {
       action((x, c) => c.copy(output = Some(x))).
       text("output file to export online measures (deactivate the interactive mode)")
 
+    opt[File]('l', "lexicon").optional().valueName("<directory>").
+      action((x, c) => c.copy(lexiconFile = x)).
+      text("set of lexicon you want to consider for alignment (default: all)")
+
     opt[Unit]('v', "verbose").action((_, c) => c.copy(verbose = true)).
       text("display logs on console")
 
@@ -103,7 +108,17 @@ object DialignOnlineApp extends LazyLogging {
             IO.loadFile(file)
         }
 
-        val dialogueHistory = DialogueHistory(utterances)
+        // Loading subset of lexicon
+        val limitedLexicon = 
+          if(config.lexiconFile.isFile) {
+            // Single file
+            io.Source.fromFile(config.lexiconFile).getLines().toSeq
+          } else {
+            // Empty or unexpected (such as directory)
+            List.empty[String]
+          }
+
+        val dialogueHistory = DialogueHistory(utterances, limitedLexicon)
 
         config.output match {
           case None =>
@@ -111,7 +126,7 @@ object DialignOnlineApp extends LazyLogging {
             interactiveRun(dialogueHistory)
 
           case Some(outputFile) =>
-            IO.exportDialogueHistory(dialogueHistory, outputFile, verbose = config.verbose)
+            IO.exportDialogueHistory(dialogueHistory, outputFile, limitedLexicon, verbose = config.verbose)
         }
 
       case None =>
@@ -125,6 +140,7 @@ object DialignOnlineApp extends LazyLogging {
      * INITIALISATION
      */
     val currentLocutors = scala.collection.mutable.Buffer[String]()
+    val limitedLexicon = dialogueHistory.getLimitedLexicon()
 
     def updateLocutor(loc: String): Unit = {
       // Update locutor if needed
@@ -174,7 +190,7 @@ object DialignOnlineApp extends LazyLogging {
 
         case 'e' =>
           val file = IO.readFilepath()
-          IO.exportDialogueHistory(dialogueHistory, file)
+          IO.exportDialogueHistory(dialogueHistory, file, limitedLexicon)
 
         case 's' =>
           // Obtain utterance
@@ -337,7 +353,7 @@ object IO {
          |""".stripMargin)
   }
 
-  def exportDialogueHistory(history: DialogueHistory, file: File, verbose: Boolean = true): Unit = {
+  def exportDialogueHistory(history: DialogueHistory, file: File, limitedLexicon: Seq[String], verbose: Boolean = true): Unit = {
     def expressionToString(expr: Expression): String =
       f"${expr.content.mkString(" ")}"
 
@@ -345,7 +361,7 @@ object IO {
       Console.println(f"Exporting history in: ${file.getAbsolutePath}")
 
     // Incrementally built history of the export
-    val exportHistory = DialogueHistory()
+    val exportHistory = DialogueHistory(limitedLexicon = limitedLexicon)
 
     dialign.IO.withFile(file) {
       writer =>
