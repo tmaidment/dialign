@@ -140,9 +140,16 @@ object DialogueLexiconBuilder extends LazyLogging {
           var includeSubseq = false
           if (!(limitedLexicon.isEmpty)) {
             breakable {for (l <- limitedLexicon) {
-              if (subseqStr contains l) {
-                includeSubseq = true
-                break
+              if (l contains " ") {
+                if (subseqStr contains l) {
+                  includeSubseq = true
+                  break
+                }
+              } else {
+                if (subseq contains l) {
+                  includeSubseq = true
+                  break
+                }
               }
             } }
           } else {

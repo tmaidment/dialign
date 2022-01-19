@@ -192,6 +192,7 @@ object DialignOfflineApp extends LazyLogging {
 
           logger.info(s"${dialogues.size} dialogue files have been loaded")
 
+          // Loading subset of lexicon
           val limitedLexicon = 
             if(config.lexiconFile.isFile) {
               // Single file
