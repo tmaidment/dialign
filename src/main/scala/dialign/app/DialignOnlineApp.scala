@@ -367,7 +367,7 @@ object IO {
       writer =>
         val heading = List(
           "locutor", "utterance",
-          "der", "sharedExpressions", "establishedSharedExpressions",
+          "der", "dee", "sharedExpressions", "establishedSharedExpressions",
           "dser", "selfRepetitions"
         )
         writer.println(CSVUtils.mkCSV(heading))
@@ -382,6 +382,7 @@ object IO {
             "\"" + CSVUtils.csvProtect(text) + "\"",
             // Verbal alignment
             f"${result.der}",
+            f"${result.dee}",
             "\"" + CSVUtils.csvProtect(result.sharedExpressions.map(expressionToString).mkString("\n")) + "\"",
             "\"" + CSVUtils.csvProtect(result.establishedSharedExpressions.map(expressionToString).mkString("\n")) + "\"",
             // Self-repetitions

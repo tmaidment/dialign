@@ -171,6 +171,7 @@ object DialogueHistory {
 
         UtteranceScoring(lastUtterance,
           lexiconMetrics.expressionRepetition,
+          lexiconMetrics.expressionEstablishment,
           selfRepetitionMetrics.selfExpressionRepetition,
           lexiconMetrics.sharedExpressions,
           lexiconMetrics.establishedSharedExpressions,

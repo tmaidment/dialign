@@ -14,6 +14,7 @@ class DialogueHistoryTest  extends AnyFunSuite {
     val expectedResult = UtteranceScoring(
       utterance = Utterance("Alice", "Hello world !"),
       der = 0.0d,
+      dee = 0.0d,
       dser = 0.0d,
       sharedExpressions = Set.empty,
       establishedSharedExpressions = Set.empty,
@@ -60,6 +61,7 @@ class DialogueHistoryTest  extends AnyFunSuite {
     val expectedResult = UtteranceScoring(
       utterance = Utterance("Alice", "i said what's up ?"),
       der = 0.0d,
+      dee = 0.0d,
       dser = 3.0d / 5.0d,
       sharedExpressions = Set.empty,
       establishedSharedExpressions = Set.empty,
@@ -87,6 +89,7 @@ class DialogueHistoryTest  extends AnyFunSuite {
     val expectedResult = UtteranceScoring(
       utterance = Utterance("Bob", "so what's up my dear ?"),
       der = 2.0d / 6.0d,
+      dee = 2.0d / 6.0d,
       dser = 0.0d,
       sharedExpressions = Set(expression),
       establishedSharedExpressions = Set(expression),

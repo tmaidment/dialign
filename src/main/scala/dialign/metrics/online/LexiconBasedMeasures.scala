@@ -50,13 +50,25 @@ case class LexiconBasedMeasures(lexicon: DialogueLexicon) {
   val establishedSharedExpressions = expressions.filter(_.establishementTurnID() == lastTurnID)
 
   /**
-    * The expression expression measure of the last turn of the dialogue, i.e.
+    * The expression repetition measure of the last turn of the dialogue, i.e.
     * a measure of the lexicon usage
     *
     */
   val expressionRepetition =
     if (lexicon.turns(lastTurnID).tokenSize > 0) {
       lexicon.turns(lastTurnID).exprsTokenSize.toDouble / lexicon.turns(lastTurnID).tokenSize.toDouble
+    } else {
+      0.0d
+    }
+
+  /**
+    * The expression establishment measure of the last turn of the dialogue, i.e.
+    * a measure of the lexicon usage
+    *
+    */
+  val expressionEstablishment =
+    if (lexicon.turns(lastTurnID).tokenSize > 0) {
+      lexicon.turns(lastTurnID).exprsEstTokenSize.toDouble / lexicon.turns(lastTurnID).tokenSize.toDouble
     } else {
       0.0d
     }

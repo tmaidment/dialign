@@ -68,6 +68,21 @@ case class DialogueLexiconMeasures(lexicon: DialogueLexicon) {
     result
   }
 
+  private val turnID2expressionEstablishment: Array[Double] = {
+    val result = Array.ofDim[Double](lexicon.turns.size)
+    var nbTokens = 0
+    var nbTokensEstRSTP = 0
+    var i = 0
+    for (turn <- lexicon.turns) {
+      nbTokens += turn.tokenSize
+      nbTokensEstRSTP += turn.exprsEstTokenSize
+      result(i) = (nbTokensEstRSTP.toDouble / nbTokens.toDouble)
+      i += 1
+    }
+
+    result
+  }
+
   protected def reduceByKey[K, V](pairSeq: Iterable[(K, V)], f: (V, V) => V): Map[K, V] = {
     val m = mutable.Map[K, V]()
 
@@ -126,8 +141,10 @@ case class DialogueLexiconMeasures(lexicon: DialogueLexicon) {
                                     rstpUsageVariety: Double,
                                     nbRSTPInitialised: Int,
                                     nbTokens: Int,
-                                    nbTokensInRSTP: Int) {
+                                    nbTokensInRSTP: Int,
+                                    nbTokensEstRSTP: Int) {
     val expressionRepetition: Double = nbTokensInRSTP.toDouble / nbTokens.toDouble
+    val expressionEstablishment: Double = nbTokensEstRSTP.toDouble / nbTokens.toDouble
 
     override def toString: String =
       s"""Speaker summary for $speaker:
@@ -137,6 +154,7 @@ case class DialogueLexiconMeasures(lexicon: DialogueLexicon) {
          |\tnb tokens: $nbTokens (ratio=${nbTokens.toDouble / lexiconNbToken})
          |\tnb tokens in established expression: $nbTokensInRSTP
          |\tcoverage (%): $expressionRepetition (nb tokens in an established expression)
+         |\testablishment (%): $expressionEstablishment (nb tokens in an establishment of new expression)
        """.stripMargin
   }
 
@@ -146,6 +164,7 @@ case class DialogueLexiconMeasures(lexicon: DialogueLexicon) {
         var nbRSTPUsed = 0
         var nbTokens = 0
         var nbTokensInRSTP = 0
+        var nbTokensEstRSTP = 0
         val rstps = mutable.Set[Expression]()
         for {
           turn <- lexicon.turns
@@ -154,6 +173,7 @@ case class DialogueLexiconMeasures(lexicon: DialogueLexicon) {
           nbRSTPUsed += turn.freeExpressions.size
           nbTokens += turn.tokenSize
           nbTokensInRSTP += turn.exprsTokenSize
+          nbTokensEstRSTP += turn.exprsEstTokenSize
           rstps ++= turn.freeExpressions
         }
 
@@ -161,7 +181,7 @@ case class DialogueLexiconMeasures(lexicon: DialogueLexicon) {
         val rstpUsageVariety = rstps.size.toDouble / lexicon.expressions.size
 
         (speaker, SpeakerSummary(speaker, lexicon.nbTokens, lexicon.expressions.size,
-          nbRSTPUsed, rstpUsageVariety, nbRSTPInitialised, nbTokens, nbTokensInRSTP))
+          nbRSTPUsed, rstpUsageVariety, nbRSTPInitialised, nbTokens, nbTokensInRSTP, nbTokensEstRSTP))
       }).toMap
 
   /*
@@ -267,11 +287,21 @@ case class DialogueLexiconMeasures(lexicon: DialogueLexicon) {
     (nbTokensInRSTP.toDouble / nbTokens.toDouble)
   }
 
+  /**
+    * Expression Establishment (EE) measure for other-repetition
+    */
+  lazy val expressionEstablishment: Double = {
+    val lastIndex = numUtterances - 1
+    turnID2expressionEstablishment(lastIndex)
+  }
+
   def initiatedExpressionsBy(s: Speaker): Double = speaker2stats(s).nbRSTPInitialised.toDouble / numExpressions.toDouble
 
   def producedTokensBy(s: Speaker): Double = speaker2stats(s).nbTokens / numTokens.toDouble
 
   def expressionRepetitionBy(s: Speaker): Double = speaker2stats(s).expressionRepetition
+
+  def expressionEstablishmentBy(s: Speaker): Double = speaker2stats(s).expressionEstablishment
 
   def numUsedExprBy(s: Speaker): Double = speaker2stats(s).nbRSTPUsed
 
@@ -318,8 +348,8 @@ object DialogueLexiconMeasures {
     val headingToCSV: String = {
       val heading = List("ID",
         "S1", "S2",
-        "S1/Initiated Expression (IE_S1)", "S1/Expression Repetition (ER_S1)", "S1/tokens (%)",
-        "S2/Initiated Expression (IE_S2)", "S2/Expression Repetition (ER_S2)", "S2/tokens (%)",
+        "S1/Initiated Expression (IE_S1)", "S1/Expression Repetition (ER_S1)", "S1/tokens (%)", "S1/Expression Establishment (EE_S1)",
+        "S2/Initiated Expression (IE_S2)", "S2/Expression Repetition (ER_S2)", "S2/tokens (%)", "S2/Expression Establishment (EE_S2)",
 
         "Voc. Overlap S1", "Voc. Overlap S2",
 
@@ -335,8 +365,8 @@ object DialogueLexiconMeasures {
 
       val data = List(
         // Speaker-specific measures
-        initiatedExpressionsBy(A), expressionRepetitionBy(A), producedTokensBy(A),
-        initiatedExpressionsBy(B), expressionRepetitionBy(B), producedTokensBy(B),
+        initiatedExpressionsBy(A), expressionRepetitionBy(A), producedTokensBy(A), expressionEstablishmentBy(A),
+        initiatedExpressionsBy(B), expressionRepetitionBy(B), producedTokensBy(B), expressionEstablishmentBy(B),
         // Shared vocabulary measures
         sharedVocabularyBy(A), sharedVocabularyBy(B),
       )

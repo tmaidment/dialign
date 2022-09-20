@@ -272,6 +272,15 @@ class DialogueLexicon(
         yield (startingPos to (startingPos + expr.content.size - 1)) // beware of the '-1'
 
     /**
+      * Computes the first range of token IDs involved in this expression for a given turn
+      *
+      */
+    def firstRange(turnID: Int): Seq[Range] = {
+      val startingPos = lexicon.turnIDAndExpr2startingPos(turnID, expr).toSeq(0)
+      Seq(startingPos to (startingPos + expr.content.size - 1)) // beware of the '-1'
+    }
+
+    /**
       * Number of instances of this expression that are free
       *
       */
@@ -346,6 +355,28 @@ class DialogueLexicon(
           expr <- this.freeExpressions
           if this.id >= expr.establishementTurnID() // only count expressions that are established
           range <- expr.ranges(this.id)
+        } yield (range)
+
+      // Recovering and counting token involved in an expression
+      (for {
+        i <- 0 until tokenSize
+        if flatRanges.exists(range => range.contains(i))
+      } yield (i)).size
+    }
+
+    /**
+      * Computes the ratio of tokens dedicated to an *establishment* of expression in this turn
+      *
+      * @see exprsTokenSize method is a similar method that counts both expression establishment and repetition
+      *
+      */
+    lazy val exprsEstTokenSize: Int = {
+      // Recovering the ranges of token positions involved in an expression
+      val flatRanges =
+        for {
+          expr <- this.freeExpressions
+          if this.id == expr.establishementTurnID() // only count expressions that are established in this turn
+          range <- expr.firstRange(this.id)
         } yield (range)
 
       // Recovering and counting token involved in an expression

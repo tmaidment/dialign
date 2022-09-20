@@ -45,6 +45,7 @@ import dialign.Expression
   *
   * @param utterance                    the scored utterance
   * @param der                          dynamic shared expression repetition
+  * @param dee                          dynamic shared expression establishment
   * @param dser                         dynamic self-expression repetitions
   * @param sharedExpressions            the shared expressions present in the utterance
   * @param establishedSharedExpressions the established shared expressions by this utterance
@@ -52,6 +53,7 @@ import dialign.Expression
   */
 case class UtteranceScoring(utterance: Utterance,
                             der: Double,
+                            dee: Double,
                             dser: Double,
                             sharedExpressions: Set[Expression],
                             establishedSharedExpressions: Set[Expression],
