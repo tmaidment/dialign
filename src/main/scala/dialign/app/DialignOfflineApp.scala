@@ -71,6 +71,7 @@ object DialignOfflineApp extends LazyLogging {
                     filenameSuffix: String = "",
                     filenameExtension: String = "tsv",
                     lexiconFile: File = new File("."),
+                    exclude: Boolean = false,
                     verbose: Boolean = false
                    )
 
@@ -142,8 +143,17 @@ object DialignOfflineApp extends LazyLogging {
 
     opt[File]('l', "lexicon").optional().valueName("<directory>").
       action((x, c) => c.copy(lexiconFile = x)).
-      text("set of lexicon you want to consider for alignment (default: all)")
+      text("set of lexicons you want to consider for alignment (default: all)")
 
+    opt[Unit]('x', "exclude").action((_, c) => c.copy(exclude = true)).
+      text("excludes expressions containing lexicons in the lexicon file (default: false)")
+
+    checkConfig(
+      c => 
+        if ((!(c.lexiconFile.isFile)) && c.exclude) failure("You must specify set of lexicons with -l or --lexicon if you want to exclude some lexicons")
+        else success
+      )
+    
     opt[Unit]('v', "verbose").action((_, c) => c.copy(verbose = true)).
       text("display logs on console")
   }
@@ -207,7 +217,7 @@ object DialignOfflineApp extends LazyLogging {
 
           val results = for (dialogue <- dialogues)
             yield {
-              val (speakerIndependentMeasures, speakerDependentMeasures)= DialogueProcessor(OUTPUT_DIR, dialogue, limitedLexicon).process()
+              val (speakerIndependentMeasures, speakerDependentMeasures)= DialogueProcessor(OUTPUT_DIR, dialogue, limitedLexicon, config.exclude).process()
               (dialogue.name, speakerIndependentMeasures, speakerDependentMeasures)
             }
 
@@ -241,7 +251,8 @@ object DialignOfflineApp extends LazyLogging {
 
   case class DialogueProcessor(outputDir: String,
                                dialogue: DialogueReader.Dialogue,
-                               limitedLexicon: Seq[String]) {
+                               limitedLexicon: Seq[String],
+                               exclude: Boolean) {
 
     val dialogueID = dialogue.name
     val utterances = dialogue.utterances
@@ -271,21 +282,28 @@ object DialignOfflineApp extends LazyLogging {
     // Building the lexicon
     logger.info(s"Building dialogue lexicon for dialogue: $dialogueID")
     // Other-repetition lexicon
-    val lexicon = DialogueLexiconBuilder(utterances, turnID2Speaker, speaker2str, limitedLexicon=limitedLexicon)
+    val lexicon = DialogueLexiconBuilder(
+      utterances, 
+      turnID2Speaker, 
+      speaker2str, 
+      limitedLexicon=limitedLexicon, 
+      exclude = exclude)
     // Self-repetition lexicon for speaker A
     val lexiconForA = DialogueLexiconBuilder(
       speaker2utterances(Speaker.A),
       turnID2Speaker,
       speaker2str,
       ExpressionType.OWN_REPETITION_ONLY,
-      limitedLexicon=limitedLexicon)
+      limitedLexicon=limitedLexicon,
+      exclude = exclude)
     // Self-repetition lexicon for speaker B
     val lexiconForB = DialogueLexiconBuilder(
       speaker2utterances(Speaker.B),
       turnID2Speaker,
       speaker2str,
       ExpressionType.OWN_REPETITION_ONLY,
-      limitedLexicon=limitedLexicon)
+      limitedLexicon=limitedLexicon,
+      exclude = exclude)
 
     def process(): (String, String) = {
       outputLexicon()

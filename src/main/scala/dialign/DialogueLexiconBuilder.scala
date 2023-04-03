@@ -99,7 +99,8 @@ object DialogueLexiconBuilder extends LazyLogging {
             speaker2string: Speaker => String = getSpeakerStrReprDefault,
             mode: ExpressionType = INTER_REPETITION_ONLY,
             isValidSequence: TokenizedUtterance => Boolean = isValidSequenceDefault,
-            limitedLexicon: Seq[String] = List.empty[String]): DialogueLexicon = {
+            limitedLexicon: Seq[String] = List.empty[String],
+            exclude: Boolean = false): DialogueLexicon = {
     // Pre-processing: building the generalized suffix tree
     val gstree = GeneralizedSuffixTree(utterances: _*)
 
@@ -155,6 +156,8 @@ object DialogueLexiconBuilder extends LazyLogging {
           } else {
             includeSubseq = true
           }
+
+          if ((!(limitedLexicon.isEmpty)) && exclude) includeSubseq = !includeSubseq
 
           if (!(includeSubseq)) {
             logger.debug(s"Ignoring pattern ($freq, $subseqStr) because it does not have specified lexicon.")

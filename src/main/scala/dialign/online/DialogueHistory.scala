@@ -60,6 +60,12 @@ sealed abstract class DialogueHistory {
 
   /**
     *
+    * @return boolean for excluding the subset of lexicon
+    */
+  def getExclude(): Boolean
+
+  /**
+    *
     * @return the sequence of locutors by their speaking order
     */
   def locutors(): IndexedSeq[String]
@@ -86,7 +92,8 @@ sealed abstract class DialogueHistory {
 
 object DialogueHistory {
   def apply(utterances: IndexedSeq[Utterance] = IndexedSeq.empty[Utterance],
-            limitedLexicon: Seq[String] = List.empty[String]): DialogueHistory = {
+            limitedLexicon: Seq[String] = List.empty[String],
+            exclude: Boolean = false): DialogueHistory = {
     // Creation and implemenation of the dialogue history
     val result = new DialogueHistory() {
       protected val utterances = scala.collection.mutable.Buffer[Utterance]()
@@ -102,6 +109,12 @@ object DialogueHistory {
         * @return the subset of lexicon
         */
       override def getLimitedLexicon(): Seq[String] = limitedLexicon
+
+      /**
+        *
+        * @return boolean for excluding the subset of lexicon
+        */
+      override def getExclude(): Boolean = exclude
 
       /**
         * Add an utterance and update dialogue history
@@ -142,7 +155,12 @@ object DialogueHistory {
             yield ((index, locutor2speaker(locutor)))).toMap
 
         // 3- Building the shared expression lexicon
-        val lexicon = DialogueLexiconBuilder(tokenizedUtterances, turn2speaker, speaker2string, limitedLexicon=limitedLexicon)
+        val lexicon = DialogueLexiconBuilder(
+          tokenizedUtterances, 
+          turn2speaker, 
+          speaker2string, 
+          limitedLexicon=limitedLexicon,
+          exclude = exclude)
 
         // 4- Building the self-expression lexicon
         val lastSpeaker = locutor2speaker(lastUtterance.locutor)
@@ -163,7 +181,8 @@ object DialogueHistory {
           lastSpeakerUtterances,
           turn2speaker, speaker2string,
           ExpressionType.OWN_REPETITION_ONLY,
-          limitedLexicon=limitedLexicon)
+          limitedLexicon=limitedLexicon,
+          exclude = exclude)
 
         // 5- Computation of metrics
         val lexiconMetrics = LexiconBasedMeasures(lexicon)
