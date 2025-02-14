@@ -49,6 +49,8 @@ object DialignWebService extends App with SprayJsonSupport with DefaultJsonProto
     path("analyze") {
       post {
         entity(as[AnalysisRequest]) { request =>
+          println(s"Processing analysis request with ${request.dialogue.length} dialogue turns")
+          
           // Convert request dialogue to utterances
           val utterances = request.dialogue.map { turn =>
             Utterance(turn.locutor, turn.utterance)
@@ -78,8 +80,8 @@ object DialignWebService extends App with SprayJsonSupport with DefaultJsonProto
 
   // Updated server binding
   val bindingFuture = Http()
-    .newServerAt("localhost", 8080)
+    .newServerAt("0.0.0.0", 8080)
     .bind(route)
 
-  println(s"Server online at http://localhost:8080/")
+  println(s"Server online at http://0.0.0.0:8080/")
 } 
