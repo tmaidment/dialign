@@ -6,6 +6,8 @@ import akka.http.scaladsl.server.Directives._
 import spray.json._
 import dialign.online.{DialogueHistory, Utterance}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
+import scala.concurrent.ExecutionContextExecutor
+import spray.json.RootJsonFormat
 
 // Case classes for JSON serialization
 case class DialogueTurn(
@@ -34,15 +36,14 @@ case class AnalysisResponse(
 // Web service implementation
 object DialignWebService extends App with SprayJsonSupport with DefaultJsonProtocol {
   // JSON formats
-  implicit val dialogueTurnFormat = jsonFormat2(DialogueTurn)
-  implicit val analysisRequestFormat = jsonFormat1(AnalysisRequest)
-  implicit val turnAnalysisFormat = jsonFormat7(TurnAnalysis)
-  implicit val analysisResponseFormat = jsonFormat1(AnalysisResponse)
+  implicit val dialogueTurnFormat: RootJsonFormat[DialogueTurn] = jsonFormat2(DialogueTurn)
+  implicit val analysisRequestFormat: RootJsonFormat[AnalysisRequest] = jsonFormat1(AnalysisRequest)
+  implicit val turnAnalysisFormat: RootJsonFormat[TurnAnalysis] = jsonFormat7(TurnAnalysis)
+  implicit val analysisResponseFormat: RootJsonFormat[AnalysisResponse] = jsonFormat1(AnalysisResponse)
 
   // Updated Actor system setup
-  implicit val system = ActorSystem("dialign-web-service")
-  // Remove materializer - it's now provided by the actor system
-  implicit val executionContext = system.dispatcher
+  implicit val system: ActorSystem = ActorSystem("dialign-web-service")
+  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
   val route =
     path("analyze") {
