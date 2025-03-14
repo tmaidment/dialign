@@ -84,4 +84,19 @@ object DialignWebService extends App with SprayJsonSupport with DefaultJsonProto
     .bind(route)
 
   println(s"Server online at http://0.0.0.0:8080/")
+  
+  // Keep the server running and handle shutdown
+  sys.addShutdownHook {
+    bindingFuture
+      .flatMap(_.unbind())
+      .onComplete(_ => system.terminate())
+  }
+
+  // Block until the server is stopped
+  scala.io.StdIn.readLine("Press ENTER to stop the server...\n")
+  
+  // Cleanup
+  bindingFuture
+    .flatMap(_.unbind())
+    .onComplete(_ => system.terminate())
 } 
