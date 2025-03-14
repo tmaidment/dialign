@@ -8,6 +8,9 @@ import dialign.online.{DialogueHistory, Utterance}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import scala.concurrent.ExecutionContextExecutor
 import spray.json.RootJsonFormat
+import scala.concurrent.Future
+import scala.util.{Success, Failure}
+import akka.http.scaladsl.model.StatusCodes
 
 // Case classes for JSON serialization
 case class DialogueTurn(
@@ -59,21 +62,29 @@ object DialignWebService extends App with SprayJsonSupport with DefaultJsonProto
           // Create dialogue history
           val dialogueHistory = DialogueHistory(utterances)
 
-          // Build response by analyzing each turn
-          val analysisResults = utterances.map { utterance =>
-            val scoring = dialogueHistory.score(utterance)
-            TurnAnalysis(
-              locutor = utterance.locutor,
-              utterance = utterance.text,
-              der = scoring.der,
-              dser = scoring.dser,
-              sharedExpressions = scoring.sharedExpressions.map(_.content.mkString(" ")).toSeq,
-              establishedSharedExpressions = scoring.establishedSharedExpressions.map(_.content.mkString(" ")).toSeq,
-              selfExpressions = scoring.selfExpressions.map(_.content.mkString(" ")).toSeq
-            )
+          // Process analysis in parallel using Future
+          val analysisResultsFuture = Future.traverse(utterances) { utterance =>
+            Future {
+              val scoring = dialogueHistory.score(utterance)
+              TurnAnalysis(
+                locutor = utterance.locutor,
+                utterance = utterance.text,
+                der = scoring.der,
+                dser = scoring.dser,
+                sharedExpressions = scoring.sharedExpressions.map(_.content.mkString(" ")).toSeq,
+                establishedSharedExpressions = scoring.establishedSharedExpressions.map(_.content.mkString(" ")).toSeq,
+                selfExpressions = scoring.selfExpressions.map(_.content.mkString(" ")).toSeq
+              )
+            }
           }
 
-          complete(AnalysisResponse(analysisResults))
+          // Complete with the future result
+          onComplete(analysisResultsFuture) {
+            case Success(results) => complete(AnalysisResponse(results))
+            case Failure(ex) => 
+              println(s"Analysis failed: ${ex.getMessage}")
+              complete(StatusCodes.InternalServerError -> "Analysis failed")
+          }
         }
       }
     }
